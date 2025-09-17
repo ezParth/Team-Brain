@@ -1,25 +1,19 @@
 import express from "express";
-import { App } from "@slack/bolt";
-import axios from "axios";
+import mongoose from "mongoose";
+import dotenv from "dotenv";
+import queryRoutes from "./routes/queryRoutes.js";
+import "./slackBot.js";
 
+dotenv.config();
 const app = express();
+app.use(express.json());
 
-const slackApp = new App({
-  token: process.env.SLACK_BOT_TOKEN,
-  appToken: process.env.SLACK_APP_TOKEN,
-  socketMode: true,
+app.use("/api/query", queryRoutes);
+
+mongoose.connect(process.env.MONGO_URI)
+  .then(() => console.log("✅ MongoDB connected"))
+  .catch(err => console.error(err));
+
+app.listen(process.env.PORT, () => {
+  console.log(`🚀 Backend running on port ${process.env.PORT}`);
 });
-
-slackApp.event("message", async ({ event }) => {
-  // Send Slack message to Pathway for ingestion
-  await axios.post("http://localhost:8000/ingest", {
-    text: event.text,
-    user: event.user,
-    ts: event.ts,
-  });
-});
-
-(async () => {
-  await slackApp.start();
-  console.log("⚡ Slack bot running!");
-})();
