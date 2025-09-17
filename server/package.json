@@ -2,16 +2,20 @@
   "name": "server",
   "version": "1.0.0",
   "main": "index.js",
+  "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "nodemon index.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@slack/bolt": "^4.4.0",
     "axios": "^1.12.2",
     "express": "^5.1.0",
+    "mongoose": "^8.18.1",
     "slack": "^11.0.2"
   }
 }
