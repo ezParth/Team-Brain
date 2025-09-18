@@ -19,7 +19,6 @@ text_splitter = splitters.TokenCountSplitter(max_tokens=400)
 # Lazy Gemini Embedder to avoid API call on startup
 class LazyGeminiEmbedder(embedders.GeminiEmbedder):
     def get_embedding_dimension(self):
-        # Replace with your model's default embedding dimension
         return 1536
 
 embedder = LazyGeminiEmbedder(
@@ -27,7 +26,7 @@ embedder = LazyGeminiEmbedder(
     cache_strategy=DiskCache()
 )
 
-# VectorStoreServer (real-time ingestion)
+# ✅ No docs argument, since we'll insert dynamically
 vector_server = VectorStoreServer(
     embedder=embedder,
     splitter=text_splitter,
@@ -63,7 +62,7 @@ def ingest():
     if not text:
         return jsonify({"error": "No text provided"}), 400
 
-    # Insert into vector server
+    # Insert into vector server dynamically
     vector_server.insert({"text": text, "user": user, "ts": ts})
     return jsonify({"status": "received"}), 200
 
@@ -83,14 +82,7 @@ def query():
 
 
 if __name__ == "__main__":
-    # Start RAG server in background (optional)
+    port = int(os.getenv("PATHWAY_FLASK_PORT", 8000))
     print("✅ Pathway RAG server starting...")
-
-    rag_app.build_server(
-        host="0.0.0.0",
-        port=int(os.getenv("PATHWAY_FLASK_PORT", 8000))
-    )
-
-    # Start Flask API
-    print(f"🚀 Flask API running on port {os.getenv('PATHWAY_FLASK_PORT', 8000)}")
-    app.run(host="0.0.0.0", port=int(os.getenv("PATHWAY_FLASK_PORT", 8000)))
+    print(f"🚀 Flask API running on port {port}")
+    app.run(host="0.0.0.0", port=port)
