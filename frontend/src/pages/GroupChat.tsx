@@ -137,6 +137,18 @@ const GroupChat = () => {
     if (changeContext) {
       // If asking a question
       const res = await groupApi.askQuestion(username, groupName, newMessage);
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: username || "Unknown",
+          message: newMessage,
+          time: new Date().toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+        },
+      ])
   
       // Assume backend response contains the answer or question message
       console.log("res -> ", res)
