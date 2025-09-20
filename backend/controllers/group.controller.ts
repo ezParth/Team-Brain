@@ -58,7 +58,7 @@ export const joinGroup = async (req: any, res: any) => {
 };
 
 // ------------------ GET GROUPS BY USER ------------------
-export const getGroupsByUser = async (req: Request, res: Response) => {
+export const getGroupsByUser = async (req: any, res: any) => {
   try {
     const username = req.user?.username;
     const user = await UserModel.findOne({ username });
@@ -69,7 +69,7 @@ export const getGroupsByUser = async (req: Request, res: Response) => {
 };
 
 // ------------------ DELETE GROUP ------------------
-export const deleteGroup = async (req: Request, res: Response) => {
+export const deleteGroup = async (req: any, res: any) => {
   try {
     const { groupName } = req.body;
     const username = req.user?.username;
