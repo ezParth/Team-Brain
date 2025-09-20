@@ -28,6 +28,7 @@ const GroupChat = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [newMessage, setNewMessage] = useState("")
   const [onlineUsers, setOnlineUsers] = useState<string[]>([])
+  const [changeContext, setChangeContext] = useState<boolean>(false)
   const socket = useRef<Socket | null>(null)
 
   useEffect(() => {
@@ -118,19 +119,75 @@ const GroupChat = () => {
     ])
   }
 
-  const sendMessage = () => {
-    if (!newMessage.trim() || !groupName || !username) return
-
-    const payload: WSMessage = {
-      event: "Send-Message",
-      room: groupName,
-      user: username,
-      data: newMessage,
+  const handleChangeContext = () => {
+    setChangeContext((prev) => {
+      const newValue = !prev;
+      if (newValue) {
+        showInfo("You are asking Questions now, please keep them precise and to the point");
+      } else {
+        showInfo("You are not asking question now");
+      }
+      return newValue;
+    });
+  };
+  
+  const sendMessage = async () => {
+    if (!newMessage.trim() || !groupName || !username) return;
+  
+    if (changeContext) {
+      // If asking a question
+      const res = await groupApi.askQuestion(username, groupName, newMessage);
+  
+      // Assume backend response contains the answer or question message
+      console.log("res -> ", res)
+      if (res?.data?.success) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: "AI",
+            message: res.data.messages,
+            time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+            type: "question",
+          },
+        ]);
+      }
+      setNewMessage("");
+      handleChangeContext()
+    } else {
+      // Normal chat
+      const payload: WSMessage = {
+        event: "Send-Message",
+        room: groupName,
+        user: username,
+        data: newMessage,
+      };
+      socket.current?.emit("Send-Message", payload);
+      setNewMessage("");
     }
+  };
+  
 
-    socket.current?.emit("Send-Message", payload)
-    setNewMessage("")
-  }
+  // const sendMessage = async () => {
+  //   if(changeContext) {
+  //     if (!newMessage.trim() || !groupName || !username) return
+
+  //     const res = await groupApi.askQuestion(username, groupName, newMessage)
+
+  //   }else {
+
+  //     if (!newMessage.trim() || !groupName || !username) return
+      
+  //     const payload: WSMessage = {
+  //       event: "Send-Message",
+  //       room: groupName,
+  //       user: username,
+  //       data: newMessage,
+  //     }
+      
+  //     socket.current?.emit("Send-Message", payload)
+  //     setNewMessage("")
+  //   }
+  // }
 
   if (!isAuthenticated) return <p>Please log in to chat</p>
 
@@ -142,30 +199,36 @@ const GroupChat = () => {
           width: "220px",
           backgroundColor: "#ffffff",
           borderRight: "1px solid #ddd",
-          padding: "1rem",
+          padding: "0.5rem",
           overflowY: "auto",
+          display: "flex",
+          flexDirection: "column",
         }}
       >
-        <h3 style={{ marginBottom: "1rem", color: "#075E54" }}>🟢 Online</h3>
+        <h3 style={{ marginBottom: "0.5rem", color: "#075E54", fontSize: "0.85rem" }}>🟢 Online</h3>
         {onlineUsers?.length > 0 ? (
-          onlineUsers.map((user, idx) => (
-            <div
-              key={idx}
-              style={{
-                padding: "0.5rem",
-                borderBottom: "1px solid #f0f0f0",
-                fontWeight: user === username ? "bold" : "normal",
-                color: user === username ? "#075E54" : "#333",
-              }}
-            >
-              {user}
-            </div>
-          ))
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+            {onlineUsers.map((user, idx) => (
+              <div
+                key={idx}
+                style={{
+                  fontSize: "0.75rem",
+                  fontWeight: user === username ? "bold" : "normal",
+                  color: user === username ? "#075E54" : "#333",
+                  overflow: "hidden",
+                  whiteSpace: "nowrap",
+                  textOverflow: "ellipsis",
+                }}
+              >
+                {user}
+              </div>
+            ))}
+          </div>
         ) : (
-          <p style={{ color: "gray" }}>No users online</p>
+          <p style={{ color: "gray", fontSize: "0.75rem" }}>No users online</p>
         )}
       </div>
-
+  
       {/* Chat area */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
         <div
@@ -178,7 +241,7 @@ const GroupChat = () => {
         >
           💬 {groupName} — {username}
         </div>
-
+  
         <div
           style={{
             flex: 1,
@@ -189,19 +252,25 @@ const GroupChat = () => {
           }}
         >
           {messages.map((msg, idx) => {
-            const isMe = msg.sender === username
+            const isMe = msg.sender === username;
+            const isQuestion = changeContext == true;
+  
             return (
               <div
                 key={idx}
                 style={{
                   display: "flex",
                   justifyContent: isMe ? "flex-end" : "flex-start",
-                  marginBottom: "1rem",
+                  marginBottom: "0.75rem",
                 }}
               >
                 <div
                   style={{
-                    backgroundColor: isMe ? "#dcf8c6" : "white",
+                    backgroundColor: isMe
+                      ? "#dcf8c6"
+                      : isQuestion
+                      ? "#ffe0b2" // questions from backend
+                      : "white",
                     padding: "0.75rem 1rem",
                     borderRadius: "12px",
                     maxWidth: "65%",
@@ -212,7 +281,7 @@ const GroupChat = () => {
                   <div
                     style={{
                       fontWeight: "bold",
-                      fontSize: "0.85rem",
+                      fontSize: "0.75rem",
                       textAlign: "center",
                       marginBottom: "0.25rem",
                       color: isMe ? "#075E54" : "#333",
@@ -220,16 +289,14 @@ const GroupChat = () => {
                   >
                     {msg.sender}
                   </div>
-
+  
                   {/* Message */}
-                  <div style={{ fontSize: "1rem", marginBottom: "0.4rem" }}>
-                    {msg.message}
-                  </div>
-
+                  <div style={{ fontSize: "0.95rem", marginBottom: "0.25rem" }}>{msg.message}</div>
+  
                   {/* Time */}
                   <div
                     style={{
-                      fontSize: "0.8rem",
+                      fontSize: "0.7rem",
                       fontWeight: "bold",
                       color: "gray",
                       textAlign: "right",
@@ -239,10 +306,11 @@ const GroupChat = () => {
                   </div>
                 </div>
               </div>
-            )
+            );
           })}
         </div>
-
+  
+        {/* Input area */}
         <div
           style={{
             display: "flex",
@@ -281,10 +349,196 @@ const GroupChat = () => {
           >
             ➤
           </button>
+          <button
+            onClick={handleChangeContext}
+            style={{
+              marginLeft: "0.5rem",
+              padding: "0.75rem 1.25rem",
+              borderRadius: "50%",
+              border: "none",
+              backgroundColor: "#075E54",
+              color: "white",
+              fontWeight: "bold",
+              cursor: "pointer",
+              fontSize: "1.2rem",
+            }}
+          >
+            {changeContext ? "🔴" : "⚪️"}
+          </button>
         </div>
       </div>
     </div>
   )
+  
+
+  // return (
+  //   <div style={{ display: "flex", height: "100vh", backgroundColor: "#ece5dd" }}>
+  //     {/* Sidebar for online users */}
+  //     <div
+  //       style={{
+  //         width: "220px",
+  //         backgroundColor: "#ffffff",
+  //         borderRight: "1px solid #ddd",
+  //         padding: "1rem",
+  //         overflowY: "auto",
+  //       }}
+  //     >
+  //       <h3 style={{ marginBottom: "1rem", color: "#075E54" }}>🟢 Online</h3>
+  //       {onlineUsers?.length > 0 ? (
+  //         onlineUsers.map((user, idx) => (
+  //           <div
+  //             key={idx}
+  //             style={{
+  //               padding: "0.5rem",
+  //               borderBottom: "1px solid #f0f0f0",
+  //               fontWeight: user === username ? "bold" : "normal",
+  //               color: user === username ? "#075E54" : "#333",
+  //             }}
+  //           >
+  //             {user}
+  //           </div>
+  //         ))
+  //       ) : (
+  //         <p style={{ color: "gray" }}>No users online</p>
+  //       )}
+  //     </div>
+
+  //     {/* Chat area */}
+  //     <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+  //       <div
+  //         style={{
+  //           backgroundColor: "#075E54",
+  //           color: "white",
+  //           padding: "1rem",
+  //           fontWeight: "bold",
+  //         }}
+  //       >
+  //         💬 {groupName} — {username}
+  //       </div>
+
+  //       <div
+  //         style={{
+  //           flex: 1,
+  //           overflowY: "auto",
+  //           padding: "1rem",
+  //           backgroundImage: "url('https://i.ibb.co/4pDNDk1/whatsapp-bg.png')",
+  //           backgroundSize: "cover",
+  //         }}
+  //       >
+  //         {messages.map((msg, idx) => {
+  //           const isMe = msg.sender === username
+  //           return (
+  //             <div
+  //               key={idx}
+  //               style={{
+  //                 display: "flex",
+  //                 justifyContent: isMe ? "flex-end" : "flex-start",
+  //                 marginBottom: "1rem",
+  //               }}
+  //             >
+  //               <div
+  //                 style={{
+  //                   backgroundColor: isMe ? "#dcf8c6" : "white",
+  //                   padding: "0.75rem 1rem",
+  //                   borderRadius: "12px",
+  //                   maxWidth: "65%",
+  //                   boxShadow: "0 2px 4px rgba(0,0,0,0.15)",
+  //                 }}
+  //               >
+  //                 {/* Sender */}
+  //                 <div
+  //                   style={{
+  //                     fontWeight: "bold",
+  //                     fontSize: "0.85rem",
+  //                     textAlign: "center",
+  //                     marginBottom: "0.25rem",
+  //                     color: isMe ? "#075E54" : "#333",
+  //                   }}
+  //                 >
+  //                   {msg.sender}
+  //                 </div>
+
+  //                 {/* Message */}
+  //                 <div style={{ fontSize: "1rem", marginBottom: "0.4rem" }}>
+  //                   {msg.message}
+  //                 </div>
+
+  //                 {/* Time */}
+  //                 <div
+  //                   style={{
+  //                     fontSize: "0.8rem",
+  //                     fontWeight: "bold",
+  //                     color: "gray",
+  //                     textAlign: "right",
+  //                   }}
+  //                 >
+  //                   {msg.time}
+  //                 </div>
+  //               </div>
+  //             </div>
+  //           )
+  //         })}
+  //       </div>
+
+  //       <div
+  //         style={{
+  //           display: "flex",
+  //           padding: "0.5rem",
+  //           backgroundColor: "#f0f0f0",
+  //           borderTop: "1px solid #ddd",
+  //         }}
+  //       >
+  //         <input
+  //           type="text"
+  //           placeholder="Type a message"
+  //           value={newMessage}
+  //           onChange={(e) => setNewMessage(e.target.value)}
+  //           style={{
+  //             flex: 1,
+  //             padding: "0.75rem",
+  //             borderRadius: "20px",
+  //             border: "1px solid #ccc",
+  //             outline: "none",
+  //             fontSize: "1rem",
+  //           }}
+  //         />
+  //         <button
+  //           onClick={sendMessage}
+  //           style={{
+  //             marginLeft: "0.5rem",
+  //             padding: "0.75rem 1.25rem",
+  //             borderRadius: "50%",
+  //             border: "none",
+  //             backgroundColor: "#075E54",
+  //             color: "white",
+  //             fontWeight: "bold",
+  //             cursor: "pointer",
+  //             fontSize: "1.2rem",
+  //           }}
+  //         >
+  //           ➤
+  //         </button>
+  //         <button
+  //           onClick={handleChangeContext}
+  //           style={{
+  //             marginLeft: "0.5rem",
+  //             padding: "0.75rem 1.25rem",
+  //             // padding: "0.25rem 0.75rem",
+  //             borderRadius: "50%",
+  //             border: "none",
+  //             backgroundColor: "#075E54",
+  //             color: "white",
+  //             fontWeight: "bold",
+  //             cursor: "pointer",
+  //             fontSize: "1.2rem",
+  //           }}
+  //         >
+  //           {changeContext == true ? "🔴" : "⚪️"}
+  //         </button>
+  //       </div>
+  //     </div>
+  //   </div>
+  // )
 }
 
 export default GroupChat

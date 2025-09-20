@@ -40,7 +40,7 @@ export const login = async (req: Request, res: Response) => {
         email: user.email,
       },
       JWT_SECRET,
-      { expiresIn: "1h" }
+      { expiresIn: "1d" }
     );
 
     return res.status(200).json({
@@ -93,7 +93,7 @@ export const signup = async (req: Request, res: Response) => {
         email: newUser.email,
       },
       JWT_SECRET,
-      { expiresIn: "1h" }
+      { expiresIn: "1d" }
     );
 
     return res.status(201).json({
@@ -142,6 +142,34 @@ export const isAuthenticated = (req: Request & { user?: any }, res: Response, ne
     console.error("ERROR (isAuthenticated):", error);
     return res.status(500).json({
       error,
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
+// ----------------- LOGOUT -----------------
+export const logout = async (req: Request, res: Response) => {
+  try {
+    // If you're using client-side storage only:
+    // Just tell the client to remove token
+    return res.status(200).json({
+      success: true,
+      message: "Logged out successfully. Please remove token on client side.",
+    });
+
+    // --- OPTIONAL (Blacklist Example) ---
+    // If you want server-controlled logout:
+    // Save token to blacklist (in Redis/DB) with expiry
+    // const authHeader = req.headers["authorization"];
+    // const token = authHeader && authHeader.split(" ")[1];
+    // if (token) {
+    //   await redisClient.set(`blacklist:${token}`, "true", { EX: 3600 });
+    // }
+    // return res.status(200).json({ success: true, message: "Logged out successfully" });
+  } catch (error) {
+    console.error("ERROR (logout):", error);
+    return res.status(500).json({
       success: false,
       message: "Internal server error",
     });

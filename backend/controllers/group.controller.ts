@@ -36,6 +36,8 @@ export const joinGroup = async (req: any, res: any) => {
     const { groupName } = req.body;
     const username = req.user?.username;
 
+    console.log("groupName for join group -> ", groupName)
+
     const group = await GroupModel.findOne({ groupName });
     if (!group) {
       return res.status(404).json({ success: false, message: "Group not found" });
@@ -94,6 +96,32 @@ export const deleteGroup = async (req: any, res: any) => {
 };
 
 // ------------------ SAVE GROUP CHAT ------------------
+export const saveGroupChatLogic = async (groupName: string, message: string, username: string) => {
+  try {
+    // const { groupName, message } = req.body;
+    // const username = req.user?.username;
+
+    const chat = {
+      sender: username!,
+      receiver: groupName,
+      message,
+      status: "sent",
+      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    };
+
+    await GroupModel.updateOne(
+      { groupName },
+      { $push: { messages: chat } }
+    );
+
+    // res.json({ success: true });
+    console.log("group chat saved succesfully")
+  } catch (err: any) {
+    // res.status(500).json({ success: false, message: err.message });
+    console.log('eror -> ', err)
+  }
+};
+
 export const saveGroupChat = async (req: any, res: any) => {
   try {
     const { groupName, message } = req.body;
@@ -169,6 +197,17 @@ export const addUserOnline = async (req: any, res: any) => {
   }
 };
 
+export const addUserOnlineLogin = async (groupName: string, username: string) => {
+  try {
+    await GroupModel.updateOne(
+      { groupName },
+      { $addToSet: { online: username } }
+    );
+  } catch (err: any) {
+    console.log("Error", err)
+  }
+};
+
 export const removeUserOnline = async (req: any, res: any) => {
   try {
     const { groupName } = req.body;
@@ -180,6 +219,21 @@ export const removeUserOnline = async (req: any, res: any) => {
     res.json({ success: true });
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+export const removeUserOnlineLogin = async (groupName: string, username: string) => {
+  try {
+    // const { groupName } = req.body;
+    // const username = req.user?.username;
+    await GroupModel.updateOne(
+      { groupName },
+      { $pull: { online: username } }
+    );
+    // res.json({ success: true });
+  } catch (err: any) {
+    // res.status(500).json({ success: false, message: err.message });
+    console.log("error in removing the user -> ", err)
   }
 };
 
