@@ -1,9 +1,16 @@
-let socket: WebSocket | null = null
+import { io, Socket } from "socket.io-client";
+
+let socket: Socket | null = null;
 
 export const getSocket = () => {
-  if (!socket || socket.readyState === WebSocket.CLOSED) {
-    socket = new WebSocket("ws://localhost:8080/ws")
+  if (!socket || !socket.connected) {
+    socket = io("http://localhost:5000", {
+      auth: {
+        token: localStorage.getItem("token"), // pass JWT if needed
+      },
+      transports: ["websocket"], // force WebSocket (optional)
+    });
   }
-  
-  return socket
-}
+
+  return socket;
+};
